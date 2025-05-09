@@ -17,7 +17,7 @@ int doelVersnelling = 1000;
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Voer snelheid en versnelling in als percentage (0-100), gescheiden door een spatie:");
+  Serial.println("Voer snelheid%, versnelling% en rotaties in (bijv: 50 75 10):");
   Serial.println("Typ 'S' voor een noodstop.");
 
   pinMode(ENABLE_PIN, OUTPUT);
@@ -40,49 +40,46 @@ void loop() {
       return;
     }
 
-    int sepIndex = input.indexOf(' ');
-    if (sepIndex > 0) {
-      int snelheidPercent = input.substring(0, sepIndex).toInt();
-      int versnellingPercent = input.substring(sepIndex + 1).toInt();
+    // Input splitsen op spaties
+    int eersteSpatie = input.indexOf(' ');
+    int tweedeSpatie = input.indexOf(' ', eersteSpatie + 1);
 
-      if (snelheidPercent == 0) {
-        digitalWrite(ENABLE_PIN, LOW);
-        motor.stop();
-        Serial.println("Motor uitgeschakeld. Voer een nieuwe snelheid en versnelling in:");
-        wachtOpInvoer = true;
-        motorBezig = false;
-        return;
-      }
+    if (eersteSpatie > 0 && tweedeSpatie > eersteSpatie) {
+      int snelheidPercent = input.substring(0, eersteSpatie).toInt();
+      int versnellingPercent = input.substring(eersteSpatie + 1, tweedeSpatie).toInt();
+      int rotaties = input.substring(tweedeSpatie + 1).toInt();
 
       if (snelheidPercent >= 0 && snelheidPercent <= 100 &&
-          versnellingPercent >= 0 && versnellingPercent <= 100) {
+          versnellingPercent >= 0 && versnellingPercent <= 100 &&
+          rotaties > 0) {
 
-        // Percentages omzetten naar absolute waarden
         doelSnelheid = (snelheidPercent / 100.0) * maxSnelheid;
         doelVersnelling = (versnellingPercent / 100.0) * maxVersnelling;
 
         digitalWrite(ENABLE_PIN, HIGH);
         motor.setMaxSpeed(doelSnelheid);
         motor.setAcceleration(doelVersnelling);
-        motor.move(stappenPerOmwenteling * 50);
+        motor.move(rotaties * stappenPerOmwenteling);
 
         wachtOpInvoer = false;
         motorBezig = false;
 
-        Serial.print("Motor draait op ");
+        Serial.print("Motor draait ");
+        Serial.print(rotaties);
+        Serial.print(" rotaties op ");
         Serial.print(snelheidPercent);
-        Serial.print("% (");
+        Serial.print("% snelheid (");
         Serial.print(doelSnelheid);
-        Serial.print(") snelheid met ");
+        Serial.print(") met ");
         Serial.print(versnellingPercent);
-        Serial.print("% (");
+        Serial.print("% versnelling (");
         Serial.print(doelVersnelling);
-        Serial.println(") versnelling.");
+        Serial.println(").");
         return;
       }
     }
 
-    Serial.println("⚠️ Ongeldige invoer! Geef snelheid en versnelling in % (0–100) of typ 'S' om te stoppen.");
+    Serial.println("⚠️ Ongeldige invoer! Gebruik bijv: 50 75 10 of typ 'S' voor noodstop.");
     return;
   }
 
@@ -94,7 +91,7 @@ void loop() {
     }
 
     if (motor.distanceToGo() == 0) {
-      Serial.println("\n✅ Motor gestopt. Voer een nieuwe snelheid en versnelling in:");
+      Serial.println("\n✅ Motor gestopt. Voer nieuwe snelheid%, versnelling% en rotaties in:");
       wachtOpInvoer = true;
       motorBezig = false;
       Serial.println("Motor in rust.");
